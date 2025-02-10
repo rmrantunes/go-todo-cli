@@ -6,12 +6,18 @@ package cmd
 import (
 	"encoding/csv"
 	"fmt"
+	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"time"
 	"todo-cli/util"
 
 	"github.com/spf13/cobra"
 )
+
+var storageFilePath = filepath.Join("storage", "storage.csv")
+var maxIdFilePath = filepath.Join("storage", "max-id.txt")
 
 var title string
 
@@ -19,8 +25,7 @@ var addCmd = &cobra.Command{
 	Use:   "add",
 	Short: "Create a new todo",
 	Run: func(cmd *cobra.Command, args []string) {
-		filePath := filepath.Join("storage", "storage.csv")
-		file, err := util.LoadFile(filePath)
+		file, err := util.LoadFile(storageFilePath)
 
 		util.DieOnError(err)
 
@@ -38,8 +43,24 @@ var addCmd = &cobra.Command{
 
 		util.DieOnError(err)
 
+		maxIdFile, err := os.ReadFile(maxIdFilePath)
+
+		util.DieOnError(err)
+
+		maxIdString := strings.ReplaceAll(string(maxIdFile), "\n", "")
+
+		if maxIdString == "" {
+			maxIdString = "0"
+		}
+
+		maxId, err := strconv.ParseInt(maxIdString, 10, 64)
+
+		util.DieOnError(err)
+
+		todoId := maxId + 1
+
 		err = csvWriter.Write([]string{
-			"1",
+			strconv.FormatInt(todoId, 10),
 			cmd.Flag("description").Value.String(),
 			"false",
 			time.Now().Format(time.RFC3339),
@@ -53,7 +74,13 @@ var addCmd = &cobra.Command{
 
 		util.DieOnError(err)
 
-		fmt.Println("Todo created with id", "1")
+		newMaxIdFileBytes := []byte(strconv.FormatInt(todoId, 10))
+
+		err = os.WriteFile(maxIdFilePath, newMaxIdFileBytes, os.ModeAppend)
+
+		util.DieOnError(err)
+
+		fmt.Println("Todo created with id", todoId)
 	},
 }
 
