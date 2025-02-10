@@ -27,14 +27,6 @@ var addCmd = &cobra.Command{
 
 		defer util.CloseFile(file)
 
-		csvReader := csv.NewReader(file)
-
-		csvFile, err := csvReader.ReadAll()
-
-		util.DieOnError(err)
-
-		fmt.Println(csvFile)
-
 		csvWriter := csv.NewWriter(file)
 
 		util.DieOnError(err)
