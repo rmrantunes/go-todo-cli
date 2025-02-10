@@ -7,7 +7,6 @@ import (
 	"encoding/csv"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -15,9 +14,6 @@ import (
 
 	"github.com/spf13/cobra"
 )
-
-var storageFilePath = filepath.Join("storage", "storage.csv")
-var maxIdFilePath = filepath.Join("storage", "max-id.txt")
 
 var title string
 
@@ -86,5 +82,5 @@ var addCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(addCmd)
-	addCmd.Flags().StringVarP(&title, "description", "t", "", "Todo description")
+	addCmd.Flags().StringVarP(&title, "description", "d", "", "Todo description")
 }
