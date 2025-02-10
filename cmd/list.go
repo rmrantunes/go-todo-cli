@@ -8,8 +8,10 @@ import (
 	"fmt"
 	"os"
 	"text/tabwriter"
+	"time"
 	"todo-cli/util"
 
+	"github.com/mergestat/timediff"
 	"github.com/spf13/cobra"
 )
 
@@ -24,8 +26,6 @@ var listCmd = &cobra.Command{
 If you want to list all, use the flag -a or --all
 	`,
 	Run: func(cmd *cobra.Command, args []string) {
-		all := cmd.Flag("all").Value.String() == "true"
-
 		file, err := util.LoadFile(storageFilePath)
 
 		util.DieOnError(err)
@@ -51,12 +51,24 @@ If you want to list all, use the flag -a or --all
 				continue
 			}
 
+			createdAtColumn := csvLine[3]
+
+			if createdAtColumn != "CreatedAt" {
+				createdAtTime, err := time.Parse(defaultTimeFormat, createdAtColumn)
+
+				if err != nil {
+					createdAtColumn = "<<MALFORMED DATE>>"
+				} else {
+					createdAtColumn = timediff.TimeDiff(createdAtTime)
+				}
+			}
+
 			lineTextFormat := "%s\t%s\t%s\n"
-			lineData := []any{csvLine[0], csvLine[1], csvLine[3]}
+			lineData := []any{csvLine[0], csvLine[1], createdAtColumn}
 
 			if all {
 				lineTextFormat = "%s\t%s\t%s\t%s\n"
-				lineData = []any{csvLine[0], csvLine[1], csvLine[2], csvLine[3]}
+				lineData = []any{csvLine[0], csvLine[1], csvLine[2], createdAtColumn}
 			}
 
 			_, err = fmt.Fprintf(tbWriter, lineTextFormat, lineData...)
