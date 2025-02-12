@@ -27,6 +27,12 @@ var addCmd = &cobra.Command{
 
 		defer util.CloseFile(file)
 
+		// Somehow csvWriter.Write behaves awkward without csvReader.Read() call
+		csvReader := csv.NewReader(file)
+		_, err = csvReader.Read()
+
+		util.DieOnError(err)
+
 		csvWriter := csv.NewWriter(file)
 
 		util.DieOnError(err)
