@@ -6,7 +6,6 @@ package cmd
 import (
 	"encoding/csv"
 	"fmt"
-	"io/fs"
 	"os"
 	"slices"
 	"strconv"
@@ -56,13 +55,20 @@ var deleteCmd = &cobra.Command{
 
 		csvFile = slices.Delete(csvFile, possibleIndex, possibleIndex+1)
 
-		fmt.Println(csvFile)
+		util.CloseFile(file)
 
-		err = os.WriteFile(storageFilePath, []byte(""), fs.ModeAppend)
+		emptyFile, err := os.Create(storageFilePath)
+
 		util.DieOnError(err)
 
-		csvWriter := csv.NewWriter(file)
+		defer emptyFile.Close()
+
+		csvWriter := csv.NewWriter(emptyFile)
 		csvWriter.WriteAll(csvFile)
+
+		err = csvWriter.Error()
+
+		util.DieOnError(err)
 
 		csvWriter.Flush()
 
