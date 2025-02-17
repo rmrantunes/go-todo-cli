@@ -7,18 +7,17 @@ import (
 	"encoding/csv"
 	"fmt"
 	"os"
-	"slices"
 	"strconv"
 	"todo-cli/util"
 
 	"github.com/spf13/cobra"
 )
 
-var deleteId int
+var id int
 
-// deleteCmd represents the delete command
-var deleteCmd = &cobra.Command{
-	Use:   "delete",
+// completeCmd represents the complete command
+var completeCmd = &cobra.Command{
+	Use:   "complete",
 	Short: "A brief description of your command",
 	Run: func(cmd *cobra.Command, args []string) {
 		file, err := util.LoadFile(storageFilePath)
@@ -33,29 +32,28 @@ var deleteCmd = &cobra.Command{
 
 		util.DieOnError(err)
 
-		possibleIndex, found := slices.BinarySearchFunc(csvFile, id, func(line []string, id int) int {
-			csvRowID, err := strconv.ParseInt(line[0], 10, 64)
+		found := false
 
-			if line[0] == "ID" {
-				return -1
+		for _, row := range csvFile {
+			if row[0] == "ID" {
+				continue
 			}
 
-			if err != nil {
-				fmt.Println(err.Error())
-				return -1
-			}
+			rowId, err := strconv.ParseInt(row[0], 10, 64)
 
-			return int(csvRowID) - id
-		})
+			util.DieOnError(err)
+
+			if int64(id) == rowId {
+				row[2] = "true"
+				found = true
+				break
+			}
+		}
 
 		if !found {
 			fmt.Println("Todo not found with id", id)
 			return
 		}
-
-		csvFile = slices.Delete(csvFile, possibleIndex, possibleIndex+1)
-
-		util.CloseFile(file)
 
 		emptyFile, err := os.Create(storageFilePath)
 
@@ -79,6 +77,6 @@ var deleteCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(deleteCmd)
-	deleteCmd.Flags().IntVarP(&deleteId, "id", "i", 0, "Todo ID")
+	rootCmd.AddCommand(completeCmd)
+	completeCmd.Flags().IntVarP(&id, "id", "i", 0, "Todo ID")
 }
