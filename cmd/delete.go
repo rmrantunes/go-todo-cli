@@ -4,11 +4,10 @@ Copyright © 2025 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"encoding/csv"
-	"fmt"
-	"os"
-	"slices"
-	"strconv"
+	"context"
+	"log"
+	"todo-cli/internal/database"
+	"todo-cli/internal/database/repository"
 	"todo-cli/util"
 
 	"github.com/spf13/cobra"
@@ -21,60 +20,29 @@ var deleteCmd = &cobra.Command{
 	Use:   "delete",
 	Short: "A brief description of your command",
 	Run: func(cmd *cobra.Command, args []string) {
-		file, err := util.LoadFile(storageFilePath)
+		db := database.New()
+		defer db.Close()
 
-		util.DieOnError(err)
-
-		defer util.CloseFile(file)
-
-		csvReader := csv.NewReader(file)
-
-		csvFile, err := csvReader.ReadAll()
-
-		util.DieOnError(err)
-
-		possibleIndex, found := slices.BinarySearchFunc(csvFile, id, func(line []string, id int) int {
-			csvRowID, err := strconv.ParseInt(line[0], 10, 64)
-
-			if line[0] == "ID" {
-				return -1
-			}
-
-			if err != nil {
-				fmt.Println(err.Error())
-				return -1
-			}
-
-			return int(csvRowID) - id
+		todoRepository := repository.NewTodoRepository(&repository.TodoRepositoryInject{
+			DB: db.DB,
 		})
 
-		if !found {
-			fmt.Println("Todo not found with id", id)
+		ctx := context.Background()
+
+		existingTodo, err := todoRepository.FindOneById(ctx, deleteId)
+
+		util.DieOnError(err)
+
+		if existingTodo == nil {
+			log.Println("Todo not found with id", deleteId)
 			return
 		}
 
-		csvFile = slices.Delete(csvFile, possibleIndex, possibleIndex+1)
-
-		util.CloseFile(file)
-
-		emptyFile, err := os.Create(storageFilePath)
+		_, err = todoRepository.DeleteOneById(ctx, deleteId)
 
 		util.DieOnError(err)
 
-		defer emptyFile.Close()
-
-		csvWriter := csv.NewWriter(emptyFile)
-		csvWriter.WriteAll(csvFile)
-
-		err = csvWriter.Error()
-
-		util.DieOnError(err)
-
-		csvWriter.Flush()
-
-		err = csvWriter.Error()
-
-		util.DieOnError(err)
+		log.Println("Todo deleted with id", deleteId)
 	},
 }
 

@@ -124,3 +124,21 @@ func (r *TodoRepository) UpdateOneById(ctx context.Context, id int, update map[s
 
 	return todo, nil
 }
+
+func (r *TodoRepository) DeleteOneById(ctx context.Context, id int) (*model.Todo, error) {
+	todo := &model.Todo{}
+
+	query := "DELETE FROM todo WHERE id = ? RETURNING id, description, done, created_at"
+
+	err := r.db.QueryRowContext(ctx, query, id).Scan(&todo.Id, &todo.Description, &todo.Done, &todo.CreatedAt)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+
+		return nil, err
+	}
+
+	return todo, nil
+}
