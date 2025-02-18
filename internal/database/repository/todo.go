@@ -72,3 +72,55 @@ func (r *TodoRepository) List(ctx context.Context, equals map[string]string) ([]
 
 	return todos, nil
 }
+
+func (r *TodoRepository) FindOneById(ctx context.Context, id int) (*model.Todo, error) {
+	todo := &model.Todo{}
+
+	query := "SELECT id, description, done, created_at FROM todo WHERE id = ?"
+
+	err := r.db.QueryRowContext(ctx, query, id).Scan(&todo.Id, &todo.Description, &todo.Done, &todo.CreatedAt)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+
+		return nil, err
+	}
+
+	return todo, nil
+}
+
+func (r *TodoRepository) UpdateOneById(ctx context.Context, id int, update map[string]string) (*model.Todo, error) {
+	todo := &model.Todo{}
+
+	query := "UPDATE todo"
+
+	if len(update) != 0 {
+		query = fmt.Sprintf("%s %s", query, "SET")
+	}
+
+	i := 0
+	for key, item := range update {
+		query = fmt.Sprintf("%s %s = %s", query, key, item)
+
+		if i < len(update)-1 {
+			query = fmt.Sprintf("%s%s", query, ",")
+		}
+		i++
+	}
+
+	query = fmt.Sprintf("%s %s", query, "RETURNING id, description, done, created_at")
+
+	err := r.db.QueryRowContext(ctx, query).Scan(&todo.Id, &todo.Description, &todo.Done, &todo.CreatedAt)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+
+		return nil, err
+	}
+
+	return todo, nil
+}
