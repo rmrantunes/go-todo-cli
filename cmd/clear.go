@@ -4,8 +4,11 @@ Copyright © 2025 RAFAEL ANTUNES rmrantunes.dev@gmail.com
 package cmd
 
 import (
+	"context"
 	"fmt"
-	"os"
+	"log"
+	"todo-cli/internal/database"
+	"todo-cli/internal/database/repository"
 	"todo-cli/util"
 
 	"github.com/spf13/cobra"
@@ -22,20 +25,20 @@ var clearCmd = &cobra.Command{
 			return
 		}
 
-		csvFile, err := util.LoadFile(storageFilePath)
+		db := database.New()
+		defer db.Close()
+
+		todoRepository := repository.NewTodoRepository(&repository.TodoRepositoryInject{
+			DB: db.DB,
+		})
+
+		ctx := context.Background()
+
+		err := todoRepository.DangerouslyDeleteAll(ctx)
+
+		log.Println("All todos deleted com storage")
 
 		util.DieOnError(err)
-
-		defer util.CloseFile(csvFile)
-
-		maxIdFile, err := util.LoadFile(maxIdFilePath)
-
-		util.DieOnError(err)
-
-		defer util.CloseFile(maxIdFile)
-
-		os.WriteFile(storageFilePath, []byte(csvHeader), os.ModeAppend)
-		os.WriteFile(maxIdFilePath, []byte(""), os.ModeAppend)
 	},
 }
 

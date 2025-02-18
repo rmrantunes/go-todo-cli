@@ -142,3 +142,15 @@ func (r *TodoRepository) DeleteOneById(ctx context.Context, id int) (*model.Todo
 
 	return todo, nil
 }
+
+func (r *TodoRepository) DangerouslyDeleteAll(ctx context.Context) error {
+	query := "DELETE FROM todo"
+
+	_, err := r.db.ExecContext(ctx, query)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
