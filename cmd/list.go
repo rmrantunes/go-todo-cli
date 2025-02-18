@@ -4,11 +4,12 @@ Copyright © 2025 RAFAEL ANTUNES rmrantunes.dev@gmail.com
 package cmd
 
 import (
-	"encoding/csv"
+	"context"
 	"fmt"
 	"os"
 	"text/tabwriter"
-	"time"
+	"todo-cli/internal/database"
+	"todo-cli/internal/database/repository"
 	"todo-cli/util"
 
 	"github.com/mergestat/timediff"
@@ -26,49 +27,49 @@ var listCmd = &cobra.Command{
 If you want to list all, use the flag -a or --all
 	`,
 	Run: func(cmd *cobra.Command, args []string) {
-		file, err := util.LoadFile(storageFilePath)
+		db := database.New()
+		defer db.Close()
+
+		todoRepository := repository.NewTodoRepository(&repository.TodoRepositoryInject{
+			DB: db.DB,
+		})
+
+		ctx := context.Background()
+
+		equals := map[string]string{}
+
+		if !all {
+			equals = map[string]string{
+				"done": "false",
+			}
+		}
+
+		todos, err := todoRepository.List(ctx, equals)
 
 		util.DieOnError(err)
 
-		defer util.CloseFile(file)
-
-		csvReader := csv.NewReader(file)
-
 		tbWriter := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 
-		for {
-			csvLine, err := csvReader.Read()
+		lineTextFormat := "%s\t%s\t%s\n"
+		headerData := []any{"ID", "Description", "CreatedAt"}
 
-			if err != nil {
-				if err.Error() == "EOF" {
-					break
-				}
+		if all {
+			lineTextFormat = "%s\t%s\t%s\t%s\n"
+			headerData = []any{"ID", "Description", "Done", "CreatedAt"}
+		}
 
-				util.DieOnError(err)
-			}
+		_, err = fmt.Fprintf(tbWriter, lineTextFormat, headerData...)
 
-			if !all && csvLine[2] == "true" {
-				continue
-			}
+		util.DieOnError(err)
 
-			createdAtColumn := csvLine[3]
+		for _, todo := range todos {
 
-			if createdAtColumn != "CreatedAt" {
-				createdAtTime, err := time.Parse(defaultTimeFormat, createdAtColumn)
+			createdAtColumn := timediff.TimeDiff(todo.CreatedAt)
 
-				if err != nil {
-					createdAtColumn = "<<MALFORMED DATE>>"
-				} else {
-					createdAtColumn = timediff.TimeDiff(createdAtTime)
-				}
-			}
-
-			lineTextFormat := "%s\t%s\t%s\n"
-			lineData := []any{csvLine[0], csvLine[1], createdAtColumn}
+			lineData := []any{fmt.Sprintf("%d", todo.Id), todo.Description, createdAtColumn}
 
 			if all {
-				lineTextFormat = "%s\t%s\t%s\t%s\n"
-				lineData = []any{csvLine[0], csvLine[1], csvLine[2], createdAtColumn}
+				lineData = []any{fmt.Sprintf("%d", todo.Id), todo.Description, fmt.Sprintf("%v", todo.Done), createdAtColumn}
 			}
 
 			_, err = fmt.Fprintf(tbWriter, lineTextFormat, lineData...)
