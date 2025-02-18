@@ -4,12 +4,10 @@ Copyright © 2025 RAFAEL ANTUNES rmrantunes.dev@gmail.com
 package cmd
 
 import (
-	"encoding/csv"
-	"fmt"
-	"os"
-	"strconv"
-	"strings"
-	"time"
+	"context"
+	"log"
+	"todo-cli/internal/database"
+	"todo-cli/internal/database/repository"
 	"todo-cli/util"
 
 	"github.com/spf13/cobra"
@@ -21,60 +19,24 @@ var addCmd = &cobra.Command{
 	Use:   "add",
 	Short: "Create a new todo",
 	Run: func(cmd *cobra.Command, args []string) {
-		file, err := util.LoadFile(storageFilePath)
+		db := database.New()
+		defer db.Close()
 
-		util.DieOnError(err)
+		todoRepository := repository.NewTodoRepository(&repository.TodoRepositoryInject{
+			DB: db.DB,
+		})
 
-		defer util.CloseFile(file)
+		description := cmd.Flag("description").Value.String()
 
-		// Somehow csvWriter.Write behaves awkward without csvReader.Read() call
-		csvReader := csv.NewReader(file)
-		_, err = csvReader.Read()
+		ctx := context.Background()
 
-		util.DieOnError(err)
-
-		csvWriter := csv.NewWriter(file)
-
-		util.DieOnError(err)
-
-		maxIdFile, err := os.ReadFile(maxIdFilePath)
-
-		util.DieOnError(err)
-
-		maxIdString := strings.ReplaceAll(string(maxIdFile), "\n", "")
-
-		if maxIdString == "" {
-			maxIdString = "0"
-		}
-
-		maxId, err := strconv.ParseInt(maxIdString, 10, 64)
-
-		util.DieOnError(err)
-
-		todoId := maxId + 1
-
-		err = csvWriter.Write([]string{
-			strconv.FormatInt(todoId, 10),
-			cmd.Flag("description").Value.String(),
-			"false",
-			time.Now().Format(time.RFC3339),
+		todoId, err := todoRepository.CreateTodo(ctx, map[string]interface{}{
+			"description": description,
 		})
 
 		util.DieOnError(err)
 
-		csvWriter.Flush()
-
-		err = csvWriter.Error()
-
-		util.DieOnError(err)
-
-		newMaxIdFileBytes := []byte(strconv.FormatInt(todoId, 10))
-
-		err = os.WriteFile(maxIdFilePath, newMaxIdFileBytes, os.ModeAppend)
-
-		util.DieOnError(err)
-
-		fmt.Println("Todo created with id", todoId)
+		log.Println("Todo created with id", todoId)
 	},
 }
 
